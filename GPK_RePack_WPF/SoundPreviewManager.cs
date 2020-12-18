@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using NLog;
 using Nostrum.Extensions;
 using WaveFormRendererLib;
 using Image = System.Drawing.Image;
@@ -55,7 +56,7 @@ namespace GPK_RePack_WPF
                     var wasPlaying = _waveOut.PlaybackState == PlaybackState.Playing;
                     _waveOut.Pause();
                     _waveReader.CurrentTime = TimeSpan.FromMilliseconds(setMs);
-                    if(wasPlaying) _waveOut.Play();
+                    if (wasPlaying) _waveOut.Play();
                 }
                 else
                 {
@@ -117,10 +118,19 @@ namespace GPK_RePack_WPF
         public void Setup(byte[] soundwave)
         {
             ResetOggPreview();
-            if(soundwave.Length <= 1) return;
+            if (soundwave.Length <= 1) return;
             _waveReader = new VorbisWaveReader(new MemoryStream(soundwave));
             RenderWaveForm();
-            _waveOut.Init(_waveReader);
+            try
+            {
+                _waveOut.Init(_waveReader);
+
+            }
+            catch (Exception e)
+            {
+
+                NLog.LogManager.GetCurrentClassLogger().Fatal($"Failed to init sound preview: {e}");
+            }
         }
 
         private void RenderWaveForm()
@@ -154,7 +164,7 @@ namespace GPK_RePack_WPF
                         bi.EndInit();
                         WaveForm = bi;
                     }
-                    if(_waveReader != null) _waveReader.Position = 0;
+                    if (_waveReader != null) _waveReader.Position = 0;
                 });
 
             });
@@ -170,9 +180,18 @@ namespace GPK_RePack_WPF
             }
             else
             {
-                _startTime = DateTime.Now;
-                _waveReader.Position = 0;
-                _waveOut.Play();
+                try
+                {
+                    _startTime = DateTime.Now;
+                    _waveReader.Position = 0;
+                    _waveOut.Play();
+
+                }
+                catch (Exception e)
+                {
+                    LogManager.GetCurrentClassLogger().Fatal($"Failed to play sound: {e}");
+                    return;
+                }
             }
             _timer.Start();
             //OggPreviewButtonText = "Stop Preview";
