@@ -230,7 +230,20 @@ namespace GPK_RePack.Core.IO
                     var compositeUID = split[1];
 
                     logger.Trace("entry {0}:{1}", uid, compositeUID);
-                    store.ObjectMapperList.Add(compositeUID, uid);
+                    if (store.ObjectMapperList.TryGetValue(compositeUID, out var existing))
+                    {
+                        logger.Warn($"Key {uid} aleady mapped to {existing}");
+
+                        if(existing != uid)
+                        {
+                            logger.Error($"Key {compositeUID} already mapped to {existing}; received {uid}");
+                            throw new InvalidOperationException($"Key {compositeUID} already mapped to {existing}; received {uid}");
+                        }
+                    }
+                    else
+                    {
+                        store.ObjectMapperList.Add(compositeUID, uid);
+                    }
                 }
 
                 logger.Debug("parsing CompositePackageMapper");
@@ -326,7 +339,7 @@ namespace GPK_RePack.Core.IO
                     //Key = CompositeUID, Value=Nórmal UID
                     writer.Append(entry.Value + ",");
                     writer.Append(entry.Key);
- 
+
                     writer.Append("|");
 
                 }
