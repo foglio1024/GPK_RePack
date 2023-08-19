@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Packaging;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -178,7 +179,7 @@ namespace GPK_RePack.Core.IO
             NLogConfig.EnableFormLogging();
             logger.Info("Dumping done");
         }
-        public static void DumpMassIcons(GpkStore store, String outdir, Dictionary<String, List<CompositeMapEntry>> filterList)
+        public static void DumpMassIcons(GpkStore store, String outdir, Dictionary<String, List<CompositeMapEntry>> filterList, List<GpkPackage> rawPackagesList)
         {
             logger.Info("Started dumping textures to " + outdir);
             Directory.CreateDirectory(outdir);
@@ -186,6 +187,45 @@ namespace GPK_RePack.Core.IO
             SynchronizedCollection<Task> runningTasks = new SynchronizedCollection<Task>();
 
             int MAX_TASKS = 100;
+            Task rawTask = null;
+            rawTask = new Task(() =>
+            {
+                foreach (var package in rawPackagesList)
+                {
+
+                    package.LowMemMode = true;
+                    //create out dir
+                    var fileOutPath = string.Format("{0}\\{1}\\", outdir, package.GetNormalizedFilename());
+                    Directory.CreateDirectory(fileOutPath);
+
+
+                    //extract
+                    var exports = package.GetExportsByClass("Core.Texture2D");
+
+                    foreach (var export in exports)
+                    {
+                        //UID->Composite UID
+                        //S1UI_Chat2.Chat2,c7a706fb_6a349a6f_1d212.Chat2_dup |
+                        //we use this uid from pkgmapper
+                        //var imagePath = string.Format("{0}{1}_{2}.dds", fileOutPath, entry.UID, export.UID);
+
+                        var imagePath = string.Format("{0}{1}.dds", fileOutPath, export.ObjectName);
+                        TextureTools.exportTexture(export, imagePath);
+
+                        logger.Info("Extracted texture {0} to {1}", /*entry.UID*/ "", imagePath);
+                    }
+
+                    //remove ref to ease gc
+                    exports.Clear();
+                    //package = null;
+
+                    runningTasks.Remove(rawTask);
+                }
+
+            });
+
+            rawTask.Start();
+            runningTasks.Add(rawTask);
 
             foreach (var file in filterList)
             {
@@ -196,8 +236,6 @@ namespace GPK_RePack.Core.IO
                 {
                     Thread.Sleep(1000);
                 }
-
-
 
                 //limit to 5 threads by default
                 foreach (var entry in file.Value)

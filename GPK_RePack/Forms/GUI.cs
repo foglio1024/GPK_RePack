@@ -1683,7 +1683,7 @@ namespace GPK_RePack.Forms
 
             NLogConfig.DisableFormLogging();
             var outDir = dialog.SelectedPath;
-            new Task(() => MassDumper.DumpMassIcons(gpkStore, outDir, list)).Start();
+            new Task(() => MassDumper.DumpMassIcons(gpkStore, outDir, list, new List<GpkPackage>())).Start();
 
         }
         private Dictionary<String, List<CompositeMapEntry>> filterCompositeList(string text)

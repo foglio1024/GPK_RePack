@@ -1836,11 +1836,29 @@ namespace GPK_RePack_WPF
             _logger.Warn("Warning: This function can be ultra long running (hours) and unstable. Monitor logfile and output folder for progress.");
             _logger.Warn("Disabling logging, dump is running in the background. Consider setting file logging to only info.");
 
+            var rawIconGpks = GetRawIconGpks();
+
             NLogConfig.DisableFormLogging();
             var outDir = dialog.SelectedPath;
-            new Task(() => MassDumper.DumpMassIcons(_gpkStore, outDir, list)).Start();
+            new Task(() => MassDumper.DumpMassIcons(_gpkStore, outDir, list, rawIconGpks)).Start();
 
         }
+
+        private List<GpkPackage> GetRawIconGpks()
+        {
+            // BaseSearchPath should be CookedPC
+            var s1ui = Path.Combine(_gpkStore.BaseSearchPath, "Art_Data", "Packages", "S1UI");
+
+            var iconGpks = Directory.EnumerateFiles(s1ui).Where(f => Path.GetFileName(f).StartsWith("Icon_")).ToList();
+            var reader = new Reader();
+
+            var gpks = iconGpks
+                        .Select(f => reader.ReadGpk(f, false).Single())
+                        .ToList();
+            return gpks;
+            //return _gpkStore.LoadedGpkPackages.Where(p => p.Filename.StartsWith("Icon_")).ToList();
+        }
+
         private Dictionary<string, List<CompositeMapEntry>> FilterCompositeList(string text)
         {
             try
